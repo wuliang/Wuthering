@@ -1,0 +1,64 @@
+* Introduce
+"Wuthering" is a daily news fetching program. Its processing  starts from a Rss-Gate, which has a group of categories.
+ All data is stored in a database.
+ It now use the Rss-Gate "http://www.baidu.com/search/rss.html".
+
+
+* Requirements
+sqlite3, lxml
+
+* Usage
+Usage: wuthering.py rss | post | full
+	rss - fetch all the rss address of different categories (from Rss Gate)
+	post - fetch html information from rss flles
+	full - fetch full text of the news from htmls
+
+* Develope
+** Encoding
+In most case, lxml should work well based on encoding declaration in html/xml header.
+you can use "etree.HTMLParser()" without encoding parameter. However, many websites using wrong encoding declaration.
+For example, some pages of Baidu declaring 'GB2312' use codeset of cp1252, which make decoding failed. 
+So I use a "try...catch exception..." method to try other encoding in sequence if exception occurs in encoding.
+
+default(None Setting) => 'gb2312' =>  'gbk' => 'cp1252' => 'gb18030' => 'utf8'
+
+
+** DB Schema
+CREATE TABLE post (
+         id INTEGER  PRIMARY KEY AUTOINCREMENT,
+         url STRING UNIQUE NOT NULL,
+         title STRING, 
+         category STRING,
+         source STRING, 
+         author STRING,
+         description STRING, 
+         fetchdate datetime,
+         fetcherrnum  INTEGER,
+         date datetime NOT NULL,
+         xpath STRING NOT NULL,         
+         content TEXT NOT NULL
+        );
+CREATE INDEX post__url ON post (url);
+
+CREATE TABLE rss (
+         id INTEGER  PRIMARY KEY AUTOINCREMENT,
+         url STRING UNIQUE NOT NULL,
+         category STRING,
+         gate STRING       
+        );
+CREATE INDEX rss__url ON rss (url);
+
+CREATE TABLE website (
+         id INTEGER  PRIMARY KEY AUTOINCREMENT,
+         url STRING UNIQUE NOT NULL,
+         rss STRING       
+        );
+CREATE INDEX website__url ON rss (url);
+
+
+
+** release
+- Tue Mar 27 06:57:39 CST 2012
+by wuliang [www.wuliang.cn at gmail.com]
+
+
