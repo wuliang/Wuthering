@@ -1,20 +1,42 @@
 # -*- coding: utf8 -*-
 import re
 import sys
+import cookielib
 import codecs
 import urllib2
 import cStringIO as StringIO
 
 from lxml import etree
 from wutherdb import *
+from wuthertest import *
 
+def lxml_node_text(node):
+    if node.text:
+        result = node.text
+    else:
+        result = ''
+    for child in node:
+        if child.tail is not None:
+            result += child.tail
+    return result
+    
 class RssHttp:
 
+    def parse_html_basic(self,  html,  encoding):
+        parser = etree.HTMLParser(encoding=encoding)
+        tree = etree.parse(StringIO.StringIO(html), parser)
+        return tree
+
+    def parse_xml_basic(self, xml, encoding):
+        parser = etree.XMLParser(encoding=encoding)
+        tree = etree.parse(StringIO.StringIO(xml), parser)
+        return tree
+                    
     def parseHtml(self, html, encodings):
         
         try:
             # Don't specify the encoding. Let parser decide by itself
-            parser = etree.HTMLParser()
+            parser = etree.HTMLParser(encoding=None)
             tree = etree.parse(StringIO.StringIO(html), parser)
             return tree
         except:
@@ -25,14 +47,14 @@ class RssHttp:
                     return tree
                 except:
                     pass
-            raise
+            return None
         print "parseHtml has error."
 
     def parseXml(self, xml, encodings):
 
         try:
             # Don't specify the encoding. Let parser decide by itself
-            parser = etree.XMLParser()
+            parser = etree.XMLParser(encoding=None)
             tree = etree.parse(StringIO.StringIO(html), parser)
             return tree
         except:
@@ -43,16 +65,28 @@ class RssHttp:
                     return tree
                 except:
                     pass
-            raise     
+            return None     
         print "parseXml has error."
-        
+    
+           
     def getPage(self,  url):
-        file = urllib2.urlopen(url)
-        content = file.read()
+
+        try:
+            file = urllib2.urlopen(url, None, 5)
+        except:
+            print "Socket %s timed out!" % url
+            return None
+        try:
+            content = file.read()
+        except:
+            print "Socket %s timed out!" % url
+            file.close()
+            return None
+            
         file.close()
         return content
     
-    def getNewsText(self, news_url, xpath):
+    def getNewsText(self, news_url, xpath_text):
         content = self.getPage(news_url)
         tree = self.parseHtml(content)
         for paragraph in tree.xpath(xpath_text):
@@ -74,15 +108,14 @@ class RssGate_Baidu():
         root = self.root
         http = RssHttp()        
 
-        try:
-            page = http.getPage(root)
-        except:
+        
+        page = http.getPage(root)
+        if not page:
             print "fail to get page %s" % root
             return rssall
          
-        try:
-            tree = http.parseHtml(page, self.codings)
-        except:
+        tree = http.parseHtml(page, self.codings)
+        if not tree:
             print "fail to parse page %s" % root
             return rssall
             
@@ -131,7 +164,7 @@ class RssEntry_Baidu():
     filters = [u'最新',  u'焦点']
     codings = ['gb2312',  'gbk', 'cp1252', 'gb18030', 'utf8']
     paralen = 30
-    maxfetch = 5
+    maxfetch = 3
     def __init__(self,  url):
         self.url = url
                         
@@ -139,15 +172,13 @@ class RssEntry_Baidu():
         itemall =[]
         root = self.url
         http = RssHttp()    
-        try:
-            page = http.getPage(root)
-        except:
+        page = http.getPage(root)
+        if not page:
             print "fail to get page %s" % root
             return itemall
 
-        try:
-            tree = http.parseXml(page,  self.codings)
-        except:
+        tree = http.parseXml(page,  self.codings)
+        if not tree:
             print "fail to parse page %s" % root
             return itemall 
             
@@ -199,7 +230,8 @@ class RssEntry_Baidu():
 
     @staticmethod
     def full_text_format(text):
-        text= re.sub('[ \t\n\r]', '', text)
+        # this contain three types of space
+        text= re.sub('[ \t\n\r]+', '', text)
         return text
         
     @staticmethod
@@ -208,59 +240,85 @@ class RssEntry_Baidu():
         for item in itemall:
             db.insert_post(item)
         db.close()
-        
+    
+    @staticmethod
+    def extrace_text_local(http, page):
+        codings = [None]
+        xpaths = ['//div[@id="p_content"]',  '//div[@id="contentText"]', '//p' ]
+        codings.extend(RssEntry_Baidu.codings)
+        for code in codings:
+            try:
+                tree = http.parse_html_basic(page, code)
+                for xpath in xpaths:
+                    #print code,  xpath
+                    try:
+                        nodes = tree.xpath(xpath)
+                        if not nodes:
+                            continue                
+                    
+                        fulltext=""
+                        for node in nodes:
+                            text = lxml_node_text(node)
+                            if len(text) < RssEntry_Baidu.paralen:
+                                continue
+                            tt = RssEntry_Baidu.full_text_format(text)
+                            fulltext = fulltext + tt
+                
+                        if len(fulltext) > 2 * RssEntry_Baidu.paralen:
+                            return fulltext
+                    except:
+                        pass
+            except:
+                pass
+        return None
+                
     @staticmethod
     def fetch_unfetched_posts():
 
         db = WutherSql("wuther.db") 
         http = RssHttp()        
         count  = 0
-        for item in db.fetch_unfetched_posts():
+        success = 0
+        todo = db.fetch_unfetched_posts()
+        total = len(todo)
+        for item in todo:
+
+            count = count + 1
+                          
             root = item['url']
             desp = item['description']
+            content = item['content']
+            if 'fetcherrnum' not  in item.keys() or not item['fetcherrnum']:
+                item['fetcherrnum'] = 0
+            sys.stdout.write(" " * 80)
+            sys.stdout.write('\r[%d/%d/%d] process %s  ...  %s , %d' % (count, success,  total,  root,  content,  item['fetcherrnum']))
+            sys.stdout.flush()
+            
             upt = {}
             upt['fetchdate'] = time.strftime('%Y-%m-%d %H:%M:%S')
-            if 'fetcherrnum' not  in item.keys():
-                upt['fetcherrnum'] = 1
-            else:
-                if item['fetcherrnum'] == None:
-                    item['fetcherrnum'] = 0
-                upt['fetcherrnum'] = item['fetcherrnum'] + 1
+            upt['fetcherrnum'] = item['fetcherrnum'] + 1
              
             if upt['fetcherrnum'] > RssEntry_Baidu.maxfetch:
                 db.remove_post(item['id'],  item)
-                continue
-                
-#            count = count + 1
-#            if count > 5:
-#                break
-            try:
-                page = http.getPage(root)
-            except:
-                print "fail to get page %s" % root
+                continue                
+            
+            page = http.getPage(root)
+            if not page:
+                sys.stdout.write("fail to get page")
                 db.update_post(item['id'],  upt)                
                 continue
 
-            try:
-                tree = http.parseHtml(page, RssEntry_Baidu.codings)
-            except:
-                print "fail to parse page %s" % root
+            content = RssEntry_Baidu.extrace_text_local(http, page)
+            if not content:
+                sys.stdout.write("fail to parse page")
                 db.update_post(item['id'],  upt)                   
                 continue
-                           
-            texts = tree.xpath('//p/text()')
-
-            fulltext=""
-            for text in texts:
-                if len(text) < RssEntry_Baidu.paralen:
-                    continue
-                tt = RssEntry_Baidu.full_text_format(text)
-                fulltext = fulltext + tt
             
-            if len(fulltext) > 2 * RssEntry_Baidu.paralen:
-                upt['content'] = fulltext
-                db.update_post(item['id'],  upt) 
-
+            upt['content'] = content
+            db.update_post(item['id'],  upt) 
+            
+            success = success + 1
+            
         db.close()
 
 
@@ -280,6 +338,8 @@ def run4newpost():
 def run4fulltext():
     RssEntry_Baidu.fetch_unfetched_posts()
     
+
+    
 def main():
     if len(sys.argv) != 2:
         print "Usage:",  sys.argv[0],  "rss | post | full"
@@ -295,6 +355,8 @@ def main():
         run4newpost()
     elif command == 'full':
         run4fulltext()
+    elif command == 'test':
+        run4test()        
     print 'Done.'
 
 if __name__ == '__main__':

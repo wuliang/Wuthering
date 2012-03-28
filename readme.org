@@ -5,24 +5,37 @@
 
 
 * Requirements
-sqlite3, lxml
+sqlite3, lxml, urllib2
 
 * Usage
-Usage: wuthering.py rss | post | full
-	rss - fetch all the rss address of different categories (from Rss Gate)
-	post - fetch html information from rss flles
-	full - fetch full text of the news from htmls
+** Usage: wuthering.py rss | post | full
+	+ rss - fetch all the rss address of different categories (from Rss Gate)
+	+ post - fetch html information from rss flles
+	+ full - fetch full text of the news from htmls
+       + test - run a test function in wuthertest.py 
 
 * Develope
-** Encoding
+** Which XPath ?
+Since a RSS points to many different news source, each of which may have its own format (organizaton) of news page,
+there is no specification (or common rules) to decide where is the content. After trying and trying, I uses three Xpath now:
+ + '//div[@id="p_content"]'
+ + '//div[@id="contentText"]' 
+ + '//p' 
+see function "extrace_text_local" for detail.
+
+** Which Encoding ?
 In most case, lxml should work well based on encoding declaration in html/xml header.
 you can use "etree.HTMLParser()" without encoding parameter. However, many websites using wrong encoding declaration.
-For example, some pages of Baidu declaring 'GB2312' use codeset of cp1252, which make decoding failed. 
+For example, some pages of Baidu declaring 'GB2312' use codeset of cp1252, which make decoding failed(no correct content or raise exception). 
 So I use a "try...catch exception..." method to try other encoding in sequence if exception occurs in encoding.
 
 default(None Setting) => 'gb2312' =>  'gbk' => 'cp1252' => 'gb18030' => 'utf8'
 
+** Why urllib2
+It is simple. However, after using it for a while, I find it's better to use Scarppy (or others) which has heavy wrapper on urlib2. 
+Direct using urlib2 will meet errors when opening some websites.
 
+ 
 ** DB Schema
 CREATE TABLE post (
          id INTEGER  PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +71,8 @@ CREATE INDEX website__url ON rss (url);
 
 
 ** release
-- Tue Mar 27 06:57:39 CST 2012
+-  Tue Mar 27 06:57:39 CST 2012
+-  Wed Mar 28 17:19:32 CST 2012
 by wuliang [www.wuliang.cn at gmail.com]
 
 

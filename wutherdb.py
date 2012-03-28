@@ -19,7 +19,7 @@ def dict_show(myDict):
     print '-' * 80
     for key in myDict.keys():
         print key, ' : ',  myDict[key]    
-
+ 
 class WutherSql:
     """Database functions to support a Cobe brain. This is not meant
     to be used from outside."""
@@ -68,10 +68,15 @@ class WutherSql:
         
     def update_dict(self,  table,  id,  myDict):
         c = self.conn.cursor()
-        kmarks = '=?, '.join(myDict.keys())
-        kmarks = kmarks + '=?'
-        try:
-            qry = "UPDATE %s SET %s WHERE id=%s" % (table, kmarks, id)
+
+        kmarks = ""
+        for key in myDict.keys():
+            kmarks = kmarks + "," + key + "=? "
+        kmarks = kmarks[1:]
+
+        try:         
+            qry = "UPDATE %s SET %s WHERE id=%d" % (table, kmarks, id)
+            #print qry 
             c.execute(qry, myDict.values())               
             self.commit()
         except sqlite3.IntegrityError:
