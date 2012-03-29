@@ -1,7 +1,7 @@
 * Introduce
 "Wuthering" is a daily news fetching program. Its processing  starts from a Rss-Gate, which has a group of categories.
  All data is stored in a database.
- It now use the Rss-Gate "http://www.baidu.com/search/rss.html".
+ It now use the Rss-Gate [[http://www.baidu.com/search/rss.html]]
 
 
 * Requirements
@@ -12,7 +12,7 @@ sqlite3, lxml, urllib2
 	+ rss - fetch all the rss address of different categories (from Rss Gate)
 	+ post - fetch html information from rss flles
 	+ full - fetch full text of the news from htmls
-       + test - run a test function in wuthertest.py 
+	+ test - run a test function in wuthertest.py 
 
 * Develope
 ** Which XPath ?
@@ -37,36 +37,36 @@ Direct using urlib2 will meet errors when opening some websites.
 
  
 ** DB Schema
-CREATE TABLE post (
-         id INTEGER  PRIMARY KEY AUTOINCREMENT,
-         url STRING UNIQUE NOT NULL,
-         title STRING, 
-         category STRING,
-         source STRING, 
-         author STRING,
-         description STRING, 
-         fetchdate datetime,
-         fetcherrnum  INTEGER,
-         date datetime NOT NULL,
-         xpath STRING NOT NULL,         
-         content TEXT NOT NULL
-        );
-CREATE INDEX post__url ON post (url);
+ : CREATE TABLE post (
+ :          id INTEGER  PRIMARY KEY AUTOINCREMENT,
+ :          url STRING UNIQUE NOT NULL,
+ :          title STRING, 
+ :          category STRING,
+ :          source STRING, 
+ :          author STRING,
+ :          description STRING, 
+ :          fetchdate datetime,
+ :          fetcherrnum  INTEGER,
+ :          date datetime NOT NULL,
+ :          xpath STRING NOT NULL,         
+ :          content TEXT NOT NULL
+  :        );
+ : CREATE INDEX post__url ON post (url);
 
-CREATE TABLE rss (
-         id INTEGER  PRIMARY KEY AUTOINCREMENT,
-         url STRING UNIQUE NOT NULL,
-         category STRING,
-         gate STRING       
-        );
-CREATE INDEX rss__url ON rss (url);
+ : CREATE TABLE rss (
+ :          id INTEGER  PRIMARY KEY AUTOINCREMENT,
+ :          url STRING UNIQUE NOT NULL,
+ :          category STRING,
+ :          gate STRING       
+ :         );
+ : CREATE INDEX rss__url ON rss (url);
 
-CREATE TABLE website (
-         id INTEGER  PRIMARY KEY AUTOINCREMENT,
-         url STRING UNIQUE NOT NULL,
-         rss STRING       
-        );
-CREATE INDEX website__url ON rss (url);
+ : CREATE TABLE website (
+ :          id INTEGER  PRIMARY KEY AUTOINCREMENT,
+ :          url STRING UNIQUE NOT NULL,
+ :          rss STRING       
+ :         );
+ : CREATE INDEX website__url ON rss (url);
 
 
 
