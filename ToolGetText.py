@@ -24,17 +24,21 @@ def main():
     filename = "From%sTo%s.txt" % (starttime,  endtime)
     safechars = '_-.()' + string.digits + string.ascii_letters
     filename = "".join([x for x in filename if x in safechars])
-    #filename = "Output/" + filename
-    #print "Output:%s" % filename
+
     file = codecs.open(filename, 'wt', encoding='utf8')
     if not file:
         return
-
     db = WutherSql("wuther.db")
-    rows = db.fetch_duration_posts(starttime,  endtime)    
-    for row in rows:
+    
+    # Sorry, the format of post time may be changed (in Rss Gate)
+    # rows = db.fetch_duration_posts(starttime,  endtime)  
+    rows = db.fetch_duration_posts_by_fetchtime(starttime,  endtime) 
+    
+    for row in rows:        
         print >>file, row['content']
         print >>file, "\n\n\n"
+    print "%d posts has been copied to file %s" % (len(rows),  filename)
+
 
 if __name__ == "__main__":
     main()

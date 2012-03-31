@@ -142,7 +142,15 @@ class WutherSql:
         q = "SELECT * FROM post WHERE date < ? AND date > ?"
         rows = c.execute(q, (new, old)).fetchall()
         return rows
-        
+
+    def fetch_duration_posts_by_fetchtime(self, old,  new):
+
+        c = self.conn.cursor()
+        q = "SELECT * FROM post WHERE fetchdate < ? AND fetchdate > ?"
+        rows = c.execute(q, (new, old)).fetchall()
+        return rows
+
+
     def fetch_category_posts(self, category):
 
         c = self.conn.cursor()
